@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Diagnóstico de Prontidão</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: uma pergunta por tela, coluna estreita alinhada à direita como os carrosséis; resultado em cartão oliva. */
+:root{
+  --bg:#0A0A0A; --surface:#151612; --line:#2C3121; --fg:#F2F1EC; --muted:#A9AA9E;
+  --accent:#B8C77A; --olive:#2C3121; --ok:#8FBF7A; --warn:#E0B65C; --stop:#E07A62;
+  --display:"Josefin Sans","Avenir Next","Segoe UI",sans-serif; --body:"Inter","Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:620px;margin:0 auto;padding-block:28px 56px;display:flex;flex-direction:column;gap:22px}
+.marca{font:300 13px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:12px;align-items:center}
+.barra{height:3px;background:var(--line);border-radius:3px;overflow:hidden}
+.barra i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+h1{font:300 clamp(34px,8vw,50px)/1.05 var(--display);text-transform:uppercase;margin:0;text-wrap:balance}
+h1 b{font-weight:700}
+h2{font:400 clamp(24px,5.6vw,31px)/1.2 var(--display);margin:0;text-wrap:balance}
+p{margin:0}
+.mut{color:var(--muted);font-size:14.5px}
+.tela{display:flex;flex-direction:column;gap:18px}
+.etapa{font:600 12px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.opcoes{display:flex;flex-direction:column;gap:10px}
+.op{font:inherit;text-align:left;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px 16px;cursor:pointer;display:flex;gap:12px;align-items:flex-start;width:100%}
+.op:hover{border-color:var(--accent)}
+.op .l{font:600 14px/1.6 var(--display);color:var(--accent);min-width:18px}
+.op[aria-pressed="true"]{border-color:var(--accent);background:var(--olive)}
+.btn{font:600 16px/1 var(--body);border:0;border-radius:10px;padding:16px 20px;cursor:pointer;background:var(--accent);color:#14160E;width:100%}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.sec{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.linha{display:flex;gap:10px}
+.linha>*{flex:1;min-width:0}
+label.campo{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
+input[type=number]{font:500 18px var(--body);padding:13px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);width:100%}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.aviso{border-left:3px solid var(--line);padding-left:12px;color:var(--muted);font-size:14px}
+.res{background:var(--olive);border-radius:14px;padding:24px 20px;display:flex;flex-direction:column;gap:14px}
+.selo{align-self:flex-start;font:600 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;padding:7px 10px;border-radius:99px;background:var(--bg)}
+.selo.ok{color:var(--ok)}.selo.warn{color:var(--warn)}.selo.stop{color:var(--stop)}.selo.neutro{color:var(--accent)}
+.res ul,.res ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.res h3{font:600 13px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:6px 0 0}
+a.btn{display:block;text-align:center;text-decoration:none}
+.fone{font:500 15px var(--body);color:var(--fg);user-select:all}
+@media (prefers-reduced-motion:reduce){.barra i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="marca"><span>Eduardo Berticelli · nutri e personal</span><span id="contador"></span></div>
+  <div class="barra" aria-hidden="true"><i id="progresso"></i></div>
+  <section class="tela" id="tela" aria-live="polite"></section>
+</main>
+
+<script id="regras">
+/* ===== AJUSTE AQUI: o seu WhatsApp com DDI e DDD, só números (ex.: 5551999999999). Vazio = o botão não aparece. ===== */
+var WHATSAPP = "5546999809089";
+
+var ITENS = [
+ {id:"tempo",t:"Tempo fora de dieta",p:"Há quanto tempo você saiu da última dieta?",o:["Estou fora há pelo menos o tempo que ela durou","Saí, mas há menos tempo do que ela durou","Estou em dieta agora ou acabei de sair"],mot:"você ainda está em dieta ou saiu dela há pouco tempo",tar:"parar de cortar comida por enquanto e fazer de 3 a 5 refeições em horários parecidos"},
+ {id:"fome",t:"Fome",p:"Sem estar em dieta, como é a sua fome?",o:["Normal","Forte à noite","Penso em comida o dia todo ou perco o controle"],mot:"a fome está alta mesmo sem dieta",tar:"não passar mais de 4 horas sem comer durante o dia"},
+ {id:"kcal",t:"Quanto você come",tipo:"kcal",mot:"você come pouco para o seu tamanho, e quase não sobra de onde tirar",tar:"anotar 7 dias do que come, sem mudar nada"},
+ {id:"reg",t:"Registro",p:"Você anota o que come?",o:["6 ou 7 dias por semana","4 ou 5 dias","Não anoto"],val:["v","a","n"],mot:"o registro ainda tem buracos",tar:"anotar 7 dias do que come, sem mudar nada"},
+ {id:"prot",t:"Proteína",p:"Tem proteína (carne, ovo, peixe, frango, iogurte, whey) em quantas refeições?",o:["Em todas","Em duas","Em uma ou nenhuma"],mot:"a proteína aparece em poucas refeições",tar:"colocar uma fonte de proteína em todas as refeições"},
+ {id:"treino",t:"Musculação",p:"Como está a sua musculação?",o:["Faço, perto do limite, e subo carga","Faço, mas sempre com as mesmas cargas","Não faço, ou só faço cardio"],mot:"falta treino de força que evolua",tar:"reservar 2 dias fixos na semana para a musculação e anotar as cargas"},
+ {id:"passos",t:"Passos",p:"Quantos passos você dá por dia, em média?",o:["8.500 ou mais","Entre 6.000 e 8.500","Menos de 6.000","Não sei"],val:["v","a","r","n"],mot:"o movimento do dia está baixo",tar:"ver a sua média de passos no celular e somar de 500 a 1.000 por dia"},
+ {id:"sono",t:"Sono",p:"Quantas horas você dorme na maioria das noites?",o:["7 horas ou mais","Entre 6 e 7 horas","Menos de 6 horas"],mot:"o sono está curto",tar:"fixar um horário para dormir e acordar, com 30 minutos sem tela antes"},
+ {id:"vida",t:"Fase da vida",p:"Como estão os próximos dois meses?",o:["Tranquilos","Cheios","Tem algo grande pela frente: mudança, prova, casamento, luto, cirurgia"],mot:"a fase da sua vida já está pesada",tar:"separar 10 minutos por dia para uma caminhada ao ar livre"},
+ {id:"ciclo",t:"Menstruação",so:"m",p:"Como está a sua menstruação?",o:["Regular, a cada 21 a 35 dias, há 3 ciclos ou mais","Voltou ao normal há 1 ou 2 ciclos","Atrasa mais de 35 dias, sumiu ou ficou irregular","Uso DIU hormonal, implante ou pílula contínua, ou estou na menopausa","Tenho ovário policístico e acompanho com médico"],val:["v","a","r","x","x"],mot:"o seu ciclo voltou há pouco tempo",tar:"acompanhar o ciclo e falar com o ginecologista se ele voltar a falhar"},
+ {id:"musc",t:"Músculo",p:"No menor peso que você já teve, como ficou o seu corpo?",o:["Gostei, tinha forma","Quase","Perdi peso, mas fiquei sem forma"],mot:"falta músculo para o corpo que você quer ver quando emagrecer",tar:"levar a musculação a sério antes do próximo déficit"}
+];
+var ORDEM = ["tempo","fome","kcal","reg","vida","passos","prot","treino","sono","ciclo","musc"];
+var ISENTOS = ["prot","treino","passos"];
+function item(id){return ITENS.filter(function(i){return i.id===id})[0]}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+
+/* d = {sexo:"h"|"m", menor:bool, saude:{ta,gest,sint,rem}, ciclos:"0"|"1"|"2", gordura:"magro"|"meio"|"muita", kcal:{n,peso}|null, itens:{id:"v"|"a"|"r"|"n"|"x"}} */
+function classificaKcal(d){
+  if(!d.kcal || !d.kcal.n || !d.kcal.peso) return "n";
+  if(d.sexo!=="h" || d.gordura==="muita") return "n";
+  var r=d.kcal.n/d.kcal.peso;
+  return r<28?"r":r<30?"a":"v";
+}
+function decidir(d){
+  var it=Object.assign({},d.itens); it.kcal=classificaKcal(d);
+  var r={reds:[],yel:[],medir:[]};
+  ITENS.forEach(function(i){
+    if(i.so && i.so!==d.sexo) return;
+    var v=it[i.id];
+    if(v==="r") r.reds.push(i.id); else if(v==="a") r.yel.push(i.id); else if(v==="n") r.medir.push(i.id);
+  });
+  var s=d.saude||{};
+  r.rem=!!s.rem;
+  if(s.ta) r.tipo="prof"; else if(s.gest) r.tipo="gest"; else if(d.menor) r.tipo="menor"; else if(s.sint) r.tipo="med";
+  else if(d.sexo==="m" && it.ciclo==="r") r.tipo="f0";
+  else {
+    var cat=(d.sexo==="h"&&d.gordura==="muita")||(d.sexo==="m"&&d.gordura!=="magro");
+    r.barram=r.reds.filter(function(x){return !(cat&&ISENTOS.indexOf(x)>=0)});
+    r.prepPorReganho=d.ciclos==="2";
+    if(r.barram.length||r.yel.length>=3||r.prepPorReganho) r.tipo="prep";
+    else if(d.gordura==="magro") r.tipo="magro";
+    else r.tipo="pronto";
+  }
+  return r;
+}
+function tarefas(r){
+  var fila=[].concat(ORDEM.filter(function(x){return r.reds.indexOf(x)>=0}),ORDEM.filter(function(x){return r.medir.indexOf(x)>=0}),ORDEM.filter(function(x){return r.yel.indexOf(x)>=0}));
+  var out=[]; fila.forEach(function(x){var t=item(x).tar; if(out.length<2&&out.indexOf(t)<0) out.push(t)}); return out;
+}
+if(typeof module!=="undefined") module.exports={decidir,tarefas,ITENS,classificaKcal};
+</script>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var tela=$("tela");
+  var d={saude:{},itens:{},kcal:null};
+  var passos=[];
+
+  function montaPassos(){
+    passos=["intro","saude","sexo","idade","ciclos","gordura"];
+    ITENS.forEach(function(i){ if(!i.so || i.so===d.sexo) passos.push("item:"+i.id) });
+    passos.push("resultado");
+  }
+  montaPassos();
+  var atual=0, hist=[];
+
+  function el(tag,attrs,txt){var e=document.createElement(tag);for(var k in attrs||{}) e.setAttribute(k,attrs[k]); if(txt!=null) e.textContent=txt; return e}
+  function progresso(){
+    var total=passos.length-2, n=Math.min(Math.max(atual-1,0),total);
+    $("progresso").style.width=(atual===0?0:Math.round(n/total*100))+"%";
+    $("contador").textContent=(atual>0&&passos[atual]!=="resultado")?(n+1)+" de "+total:"";
+  }
+  function ir(i){hist.push(atual); atual=i; render(); window.scrollTo(0,0)}
+  function prox(){ir(atual+1)}
+  function voltar(){ if(hist.length){atual=hist.pop(); render(); window.scrollTo(0,0)} }
+
+  function botaoVoltar(){var b=el("button",{type:"button",class:"btn sec"},"Voltar"); b.onclick=voltar; return b}
+  function escolha(titulo,etapa,ops,onPick,ajuda){
+    tela.append(el("div",{class:"etapa"},etapa), el("h2",null,titulo));
+    if(ajuda) tela.append(el("p",{class:"mut"},ajuda));
+    var box=el("div",{class:"opcoes"});
+    ops.forEach(function(o,i){
+      var b=el("button",{type:"button",class:"op"}); b.append(el("span",{class:"l"},"ABCDE"[i]), el("span",null,o));
+      b.onclick=function(){onPick(i)}; box.append(b);
+    });
+    tela.append(box, botaoVoltar());
+  }
+
+  function render(){
+    tela.innerHTML=""; progresso();
+    var p=passos[atual];
+    if(p==="intro"){
+      var h=el("h1"); h.innerHTML="Antes da próxima dieta, <b>descubra se é hora de emagrecer.</b>";
+      tela.append(h,
+        el("p",null,"São cerca de 15 perguntas rápidas. No fim, você recebe a sua resposta: se é hora de um déficit ou se o melhor é se preparar antes."),
+        el("p",{class:"aviso"},"Isto é uma triagem, não uma consulta, e não substitui avaliação médica. As respostas ficam só no seu aparelho: nada é salvo nem enviado."));
+      var b=el("button",{type:"button",class:"btn"},"Começar"); b.onclick=prox; tela.append(b); return;
+    }
+    if(p==="saude"){
+      tela.append(el("div",{class:"etapa"},"Saúde"), el("h2",null,"Alguma destas situações vale para você?"), el("p",{class:"mut"},"Marque todas as que valem."));
+      var ops=[["ta","Já tive, ou acho que posso ter, um transtorno alimentar"],["gest","Estou grávida, amamentando ou tentando engravidar"],["sint","Tenho doença, dor ou sintoma sem investigar, ou estou perdendo peso sem querer"],["rem","Uso remédio, caneta para emagrecer ou hormônio"]];
+      var box=el("div",{class:"opcoes"});
+      ops.forEach(function(o){
+        var b=el("button",{type:"button",class:"op","aria-pressed":d.saude[o[0]]?"true":"false"}); b.append(el("span",{class:"l"},d.saude[o[0]]?"✓":"·"), el("span",null,o[1]));
+        b.onclick=function(){d.saude[o[0]]=!d.saude[o[0]]; render()}; box.append(b);
+      });
+      var algum=ops.some(function(o){return d.saude[o[0]]});
+      var seguir=el("button",{type:"button",class:"btn"},algum?"Continuar":"Nenhuma delas, continuar"); seguir.onclick=prox;
+      tela.append(box,seguir,botaoVoltar()); return;
+    }
+    if(p==="sexo"){ escolha("Você é homem ou mulher?","Sobre você",["Homem","Mulher"],function(i){d.sexo=i?"m":"h"; if(d.sexo==="h") delete d.itens.ciclo; montaPassos(); prox()}); return; }
+    if(p==="idade"){ escolha("Qual é a sua idade?","Sobre você",["18 anos ou mais","Menos de 18 anos"],function(i){d.menor=i===1; prox()}); return; }
+    if(p==="ciclos"){ escolha("Quantas vezes você já emagreceu e recuperou o peso?","Histórico",["Nenhuma","Uma vez","Duas vezes ou mais"],function(i){d.ciclos=String(i); prox()}); return; }
+    if(p==="gordura"){ escolha("Como você descreveria a sua gordura hoje?","Histórico",["Pouca: vejo o contorno do abdômen","No meio-termo","Tenho bastante gordura para perder"],function(i){d.gordura=["magro","meio","muita"][i]; prox()}); return; }
+    if(p.indexOf("item:")===0){
+      var it=item(p.slice(5));
+      if(it.tipo==="kcal"){
+        tela.append(el("div",{class:"etapa"},"Comida"), el("h2",null,"Quantas calorias você come num dia comum, com o peso estável?"),
+          el("p",{class:"mut"},"Só se você souber de verdade, por ter anotado. Na dúvida, toque em Não sei."));
+        var linha=el("div",{class:"linha"});
+        var l1=el("label",{class:"campo"},"Calorias por dia"), i1=el("input",{type:"number",id:"kcal",inputmode:"numeric",min:"600",max:"8000",placeholder:"ex.: 2200"});
+        var l2=el("label",{class:"campo"},"Seu peso (kg)"), i2=el("input",{type:"number",id:"peso",inputmode:"decimal",min:"35",max:"300",placeholder:"ex.: 82"});
+        if(d.kcal){i1.value=d.kcal.n||"";i2.value=d.kcal.peso||""}
+        l1.append(i1); l2.append(i2); linha.append(l1,l2);
+        var ok=el("button",{type:"button",class:"btn"},"Continuar");
+        var valida=function(){var a=+i1.value,b=+i2.value; ok.disabled=!(a>=600&&a<=8000&&b>=35&&b<=300)};
+        i1.oninput=valida; i2.oninput=valida; valida();
+        ok.onclick=function(){d.kcal={n:+i1.value,peso:+i2.value}; prox()};
+        var ns=el("button",{type:"button",class:"btn sec"},"Não sei"); ns.onclick=function(){d.kcal=null; prox()};
+        tela.append(linha,ok,ns,botaoVoltar()); return;
+      }
+      escolha(it.p,it.t,it.o,function(i){d.itens[it.id]=(it.val||["v","a","r"])[i]; prox()}); return;
+    }
+    if(p==="resultado") return resultado();
+  }
+
+  var TXT={
+    prof:["stop","Primeiro, outro cuidado","O primeiro passo não é dieta. É o acompanhamento de um psicólogo ou psiquiatra, junto com um nutricionista que trabalhe com transtorno alimentar. Por isso, aqui você não vai receber meta de peso nem sugestão de déficit."],
+    gest:["stop","Não é hora de déficit","O acompanhamento do pré-natal ou do pós-parto vem primeiro, com o obstetra e um nutricionista dessa área."],
+    menor:["stop","Converse com um adulto responsável","Este diagnóstico é para maiores de 18 anos. Procure um pediatra ou nutricionista que atenda a sua idade."],
+    med:["stop","Passe primeiro pelo médico","O que você marcou precisa ser investigado antes de qualquer dieta. Com a resposta do médico, vale refazer este diagnóstico."],
+    f0:["stop","Primeiro, o ginecologista","Ciclo que atrasa, some ou fica irregular pede atenção antes de qualquer déficit. Até lá, a dieta fica de lado."],
+    magro:["neutro","Provavelmente não é hora de emagrecer","Pelo que você respondeu, o seu próximo passo deve ser construir músculo, e não cortar comida. A avaliação completa confirma."],
+    pronto:["ok","A sua base parece pronta para um déficit","Quem está nessa condição pode ir num ritmo mais rápido, com limite. A avaliação completa ainda precisa confirmar."],
+    prep:["warn","Prepare-se antes da próxima dieta","A resposta honesta é: eu não começaria outra dieta agora. Uma fase de preparação, de 8 a 12 semanas, deixa você em condição melhor para o próximo déficit: comida subindo aos poucos, treino de força e rotina no lugar. Nessa fase, o objetivo ainda não é emagrecer."]
+  };
+
+  function resultado(){
+    var r=decidir(d), t=TXT[r.tipo];
+    var card=el("div",{class:"res"});
+    card.append(el("span",{class:"selo "+t[0]},"Seu resultado"), el("h2",null,t[1]), el("p",null,t[2]));
+    var saude=["prof","gest","menor","med","f0"].indexOf(r.tipo)>=0;
+    if(!saude){
+      var mot=[]; if(r.prepPorReganho) mot.push("você já emagreceu e recuperou o peso mais de uma vez");
+      r.reds.concat(r.yel).forEach(function(x){mot.push(item(x).mot)});
+      if(mot.length){card.append(el("h3",null,r.tipo==="prep"?"O que pesou":"O que eu arrumaria no começo")); var ul=el("ul"); mot.slice(0,4).forEach(function(m){ul.append(el("li",null,cap(m)))}); card.append(ul)}
+      var tf=tarefas(r);
+      if(tf.length){card.append(el("h3",null,"Comece por isto, nesta semana")); var ol=el("ol"); tf.forEach(function(x){ol.append(el("li",null,cap(x)))}); card.append(ol)}
+      if(r.medir.length){var nomes={kcal:"quanto você come de verdade",reg:"o registro do que você come",passos:"a sua média de passos"}; card.append(el("p",{class:"mut"},"Ainda falta medir: "+r.medir.map(function(x){return nomes[x]}).join(", ")+"."))}
+    }
+    if(r.rem) card.append(el("p",{class:"aviso"},"Como você usa medicação, não mude nada por conta própria: qualquer ajuste de dieta passa pelo seu médico."));
+    tela.append(card);
+    if(!saude){
+      tela.append(el("p",null,"Quer que eu olhe o seu caso e te diga como ficariam as próximas semanas? Me mande o seu resultado."));
+      var titulo=t[1];
+      var msg="Oi, Eduardo! Fiz o Diagnóstico de Prontidão. Meu resultado: "+titulo+". Quero entender o meu caso.";
+      if(WHATSAPP){ var a=el("a",{class:"btn",href:"https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(msg),target:"_blank",rel:"noopener"},"Enviar meu resultado no WhatsApp"); tela.append(a, el("p",{class:"mut"},"Se o botão não abrir, chame no número: ")); tela.lastChild.append(el("span",{class:"fone"},"+"+WHATSAPP)); }
+      else tela.append(el("p",{class:"mut"},"Mande DIAGNÓSTICO no direct do Instagram com o seu resultado."));
+    } else tela.append(el("p",{class:"mut"},"Obrigado por responder com sinceridade. Quando isso estiver acompanhado, será um prazer conversar."));
+    var de=el("button",{type:"button",class:"btn sec"},"Refazer"); de.onclick=function(){d={saude:{},itens:{},kcal:null}; hist=[]; montaPassos(); atual=0; render()};
+    tela.append(de);
+  }
+  render();
+})();
+</script>
+</body>
+</html>
